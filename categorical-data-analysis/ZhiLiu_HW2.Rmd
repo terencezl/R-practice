@@ -1,0 +1,250 @@
+---
+title: "ZhiLiu_HW2"
+author: "Zhi Liu"
+date: "September 14, 2016"
+output: html_document
+---
+
+### 2.6
+
+a. The difference of proportions is $\pi_1 - \pi_2 = 0.001304 - 0.000121 = 0.001183$. The relative risk is $\frac{\pi_1}{\pi_2} = \frac{0.001304}{0.000121} = 10.77686$. The relative risk is more informative because both proportions are very small but the ratio is not.
+
+b. The odds ratio is $OR = \frac{\pi_1}{1 - \pi_1} / \frac{\pi_2}{1 - \pi_2} = \frac{\pi_1}{\pi_2} \times \frac{1 - \pi_2}{1 - \pi_1} = 10.77686 * 1.001185 = 10.78963$. Because both $\pi_1$ and $\pi_2$ are very close to 0, the $\frac{1 - \pi_2}{1 - \pi_1}$ term, being $1.001185$, which is multiplied with the relative risk is very cloes to $1$.
+
+### 2.13
+
+a. A 90% confidence interval requires the Z-score to be
+
+```{r}
+qnorm(0.95)
+```
+
+The proportion of Yes in Females is $p_1 = 509/(509 + 116) = 0.8144$, and in Males $p_2 = 398/(398 + 104) = 0.7928287$. The difference in proportions is
+
+$$p_1 - p_2 = 0.0215713.$$
+
+The standard error is
+
+$$SE(p_1 - p_2) = \sqrt{\frac{p_1(1-p_1)}{n_{1+}} + \frac{p_2(1-p_2)}{n_{2+}}} =  \sqrt{\frac{0.8144*(1-0.8144)}{509 + 116} + \frac{0.7928287*(1-0.7928287)}{398+104}} = 0.02385452.$$
+
+Therefore the 90% confidence interval is
+
+$$(p_1 - p_2) \pm z_{0.005} SE = 0.0215713 \pm 1.644854 * 0.02385452 = 0.0215713 \pm 0.0392372 = [-0.0176659, 0.0608085].$$
+
+It means there is a 90% chance we'll find the population difference of proportions within the above range.
+
+b. The odds ratio is
+
+$$OR = \frac{0.8144}{0.7928287} \times \frac{1 - 0.7928287}{1 - 0.8144} = 1.116225.$$
+
+The standard error is
+
+$$SE(\log OR) = \sqrt{1/n_{11} + 1/n_{12} + 1/n_{21} + 1/n_{22}} = \sqrt{1/509 + 1/116 + 1/398 + 1/104} = 0.1507092.$$
+
+The 90% confidence interval is
+
+$$e^{\log OR \pm z_{0.005} SE} = e^{\log 1.116225 \pm 1.644854 * 0.1507092} = e^{\log 1.116225 \pm 0.2478946} = [0.69918, 1.430247].$$
+
+It means there is a 90% chance we'll find the population OR within the above range.
+
+c. Odds ratio is the most universally applicable testing method. Test $H_0: OR = 1; H_1: OR \neq 0$.
+
+The Z-score of the sample estimate is
+
+$$z = (\log \hat{OR})/SE = 0.1099525/0.1507092 = 0.7295673.$$
+
+The p-value is
+
+```{r}
+pnorm(0.7295673, lower.tail = FALSE)
+```
+
+This is quite a large p-value. Therefore, we can't reject $H_0$. Gender and Belief in Afterlife might be independent.
+
+Alternatively, we can use R's function chisq.test to do a $\chi^2$ test.
+
+```{r}
+M <- as.table(rbind(c(509, 116), c(398, 104)))
+chisq.test(M)
+```
+
+It's still a large p-value.
+
+### 2.18
+
+a. We derive:
+
+$$\hat{\mu_{11}} = n_{1+} n_{+1} / n = (21 + 159 + 110) * (21 + 53 + 94) / \sum n = 35.77093$$
+
+b. $df = (I - 1) * (J - 1) = 2 * 2 = 4$. The p-value is
+
+```{r}
+pchisq(73.4 , 4, lower.tail = FALSE)
+```
+
+The p-value is very small. $H_0$ (independence) is rejected and the two variables are dependent.
+
+c. The standardized residual $\tilde{e_{ij}}$ follows $N(0, 1)$. The values $\tilde{e_{11}} = -2.973$ and $\tilde{e_{33}} = -5.907$ lead to very small p-values:
+
+```{r}
+pnorm(-2.973) # p11
+pnorm(-5.907) # p33
+```
+
+These cells come out a lot smaller than expected. We reject $H_0$ (independence).
+
+d. Same as above, the values $\tilde{e_{13}} = 3.144$ and $\tilde{e_{31}} = 7.368$ lead to very small p-values:
+
+```{r}
+pnorm(3.144, lower.tail = FALSE) # p13
+pnorm(7.368, lower.tail = FALSE) # p31
+```
+
+These cells come out a lot larger than expected. We reject $H_0$ (independence).
+
+### 2.22
+
+a. We do a Pearson $\chi^2$ test.
+
+```{r}
+M <- as.table(rbind(c(105, 8), c(12, 2), c(18, 19), c(47, 52), c(0, 13)))
+rownames(M) <- c('Sch', 'Aff', 'Neu', 'Per', 'Spe')
+colnames(M) <- c('D', 'ND')
+results <- chisq.test(M)
+results
+```
+
+The p-value is extremely small. Reject $H_0$ (independence).
+
+b. We use the results from last step.
+
+```{r}
+rowsum <- rowSums(M)
+colsum <- colSums(M)
+p.marginal.row <- rowsum / sum(rowsum)
+p.marginal.col <- colsum / sum(colsum)
+standardized.residual <- results$residuals/(1-p.marginal.row)/(1-p.marginal.col)
+standardized.residual
+```
+
+Judging from the standardized residuals, Schizophrenia, Personality disorder and Special symtoms are the three major terms that render the two variables dependence.
+
+c. (i) $\chi^2$ test on the first two rows:
+
+```{r}
+chisq.test(M[1:2, ])
+```
+
+(ii) The third and fourth rows:
+
+```{r}
+chisq.test(M[3:4, ])
+```
+
+(iii) The last row and groups (i) and (ii):
+
+```{r}
+new.table <- rbind(colSums(M[1:2, ]), colSums(M[3:4, ]), M[5, ])
+chisq.test(new.table)
+```
+
+Judging from the large p-values for (i) and (ii) and small for (iii), between the first two rows, or between the third and fourth rows, it is not significant to reject $H_0$, but treating (i) and (ii) like groups and compare them along with the last row clearly shows the two variables, diagnosis and whether prescribing drugs are dependent.
+
+### 2.33
+
+a. Look below:
+
+$$
+\begin{array}{c|c}
+\text{Offender; Victim} & \text{W} & \text{B} \\
+\hline
+\text{W} & 19/151 & 0/9 \\
+\text{B} & 11/63 &  6/103 \\
+\end{array}
+$$
+
+b. To construct the partial tables to study conditional association, we are looking at two of them.
+
+Conditional to white victims:
+
+$$
+\begin{array}{c|c}
+\text{Offender; Death penalty} & \text{Y} & \text{N} \\
+\hline
+\text{W} & 19 & 132 \\
+\text{B} & 11 & 52 \\
+\end{array} \\
+OR = \frac{19.5 * 52.5}{132.5 * 11.5} = 0.6718622
+$$
+
+When victims are white, white offenders are less likely to receive death penalty verdicts than black offenders.
+
+Conditional to black victims:
+
+$$
+\begin{array}{c|c}
+\text{Offender; Death penalty} & \text{Y} & \text{N} \\
+\hline
+\text{W} & 0 & 9 \\
+\text{B} & 6 & 97 \\
+\end{array} \\
+OR = \frac{.5 * 97.5}{9.5 * 6.5} = 0.7894737
+$$
+
+When victims are black, white offenders are less likely to receive death penalty verdicts than black offenders.
+
+c. The marginal table:
+
+$$
+\begin{array}{c|c}
+\text{Offender; Death penalty} & \text{Y} & \text{N} \\
+\hline
+\text{W} & 19 & 141 \\
+\text{B} & 17 & 149 \\
+\end{array} \\
+OR = \frac{19.5 * 149.5}{141.5 * 17.5} = 1.177284
+$$
+
+When only marginal odds ratio is considered regardless of victims' race, it appears that white offenders receive more death penalty verdicts, which is contradictory to the conclusion drawn from (b). So yes, these data exhibit Simpson's paradox.
+
+### 2.37
+
+a. Partial table conditional to males:
+
+$$
+\begin{array}{c|c}
+\text{Race; Victim} & \text{Y} & \text{N} \\
+\hline
+\text{NW} & 0.0263 & 0.9737 \\
+\text{W} & 0.0049 & 0.9951 \\
+\end{array} \\
+OR = \frac{0.0263 * 0.9951}{0.9737 * 0.0049} = 5.485311
+$$
+
+Partial table conditional to females:
+
+$$
+\begin{array}{c|c}
+\text{Race; Victim} & \text{Y} & \text{N} \\
+\hline
+\text{NW} & 0.0072 & 0.9928 \\
+\text{W} & 0.0023 & 0.9977 \\
+\end{array} \\
+OR = \frac{0.0072 * 0.9977}{0.9928 * 0.0023} = 3.145885
+$$
+
+Whether the newborn is male or female, s/he's more likely to be a murder victim if s/he's nonwhite. The situation is worse for males.
+
+b. If gender is half-and-half, we simply sum up the proportions of males and females for each race. The marginal table:
+
+$$
+\begin{array}{c|c}
+\text{Race; Victim} & \text{Y} & \text{N} \\
+\hline
+\text{NW} & 0.0335 & 0.9665 \\
+\text{W} & 0.0072 & 0.9928 \\
+\end{array} \\
+OR = \frac{0.0335 * 0.9928}{0.9665 * 0.0072} = 4.779387
+$$
+
+Sill, s/he's more likely to be a murder victim if s/he's nonwhite.

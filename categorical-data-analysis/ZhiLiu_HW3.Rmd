@@ -1,0 +1,301 @@
+---
+title: "ZhiLiu_HW3"
+author: "Zhi Liu"
+date: "September 18, 2016"
+output: html_document
+---
+
+### 4.3
+
+a. $-0.0694$ is the coefficient associated with the decade, signifying with every 1 decade increase, the probability that the starting pitcher pitched a complete game drops 0.0694.
+
+b. $\hat\pi(12) = 0.7578 - 0.0694 * 12 = -0.075$. Not plausible because probability cannot be negative.
+
+c. $\hat\pi(12) = \frac{e^{1.148 - 0.315 * 12}}{1 + e^{1.148 - 0.315 * 12}} = 0.06710713$. More plausible because it is within range [0, 1].
+
+### 4.5
+
+a. Logistic regression:
+
+```{r}
+data <- data.frame(T = c(66, 70, 69, 68, 67, 72, 73, 70, 57, 63, 70, 78, 67, 53, 67, 75, 70, 81, 76, 79, 75, 76, 58), TD = c(0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0,1, 0, 1))
+m <- glm(TD ~ T, data = data, family = binomial(logit))
+summary(m)
+```
+
+The coefficient associated with temperature is -0.2322, meaning with every Fahrenheit increase of temperature the log odds of at least one primary O-ring suffered from thermal distress drops 0.2322.
+
+b. The probability of positive event:
+
+```{r}
+predict(m, newdata = data.frame(T = 31), type='response')
+```
+
+Very likely.
+
+c. Find the root:
+
+```{r}
+f <- function(T) {
+  logodds <- m$coefficients[['(Intercept)']] + T * m$coefficients[['T']]
+  exp(logodds) / (1 + exp(logodds)) - 0.5
+  }
+T.root <- uniroot(f, c(30, 70))$root
+T.root
+```
+
+The slope of the linear approximation can be given as:
+
+```{r}
+f <- function(T) {
+  logodds <- m$coefficients[['(Intercept)']] + T * m$coefficients[['T']]
+  exp(logodds) / (1 + exp(logodds))
+  }
+
+slope <- (f(T.root + 0.5) - f(T.root - 0.5))/1
+slope
+```
+
+d. With every Fahrenheit increase of temperature the odds of at least one primary O-ring suffered from thermal distress drops $1 - e^{-0.2322} = 0.2072125$ times the odds at that temperature point.
+
+e. (i) The Wald test:
+
+```{r}
+library(aod)
+wald.test(b = coef(m), Sigma = vcov(m), Terms=2)
+```
+
+(ii) The likelihood-ratio test:
+
+```{r}
+pchisq(28.267 - 20.315, 1,lower.tail = FALSE)
+```
+
+### 4.7
+
+a. Perform logistic regression:
+
+```{r}
+data <- data.frame(age = c(12, 15, 42, 52, 59, 73, 82, 91, 96, 105, 114, 120, 121, 128, 130, 139, 139, 157, 1, 1, 2, 8, 11, 18, 22, 31, 37, 61, 72, 81, 97, 112, 118, 127, 131, 140, 151, 159, 177, 206), kyphosis = c(rep(1, 18), rep(0, 22)))
+m1 <- glm(kyphosis ~ age, data = data, family = binomial(logit))
+summary(m1)
+pchisq(55.051 - 54.504, 1, lower.tail = FALSE)
+```
+
+The p-value 0.4595461 is quite large. The effect of age is likely to be small.
+
+b. Plot:
+
+```{r}
+library(ggplot2)
+age.sorted <- seq(min(data$age), max(data$age), 1)
+ggplot(data = data, aes(x = age, y = kyphosis)) + geom_point() + geom_line(aes(x, y), data = data.frame(x = age.sorted, y = predict(m1, data.frame(age = age.sorted), type='response')), col='red')
+```
+
+The distribution of the two kyphosis levels:
+```{r}
+ggplot(data = data, aes(x = factor(kyphosis), y = age, fill = factor(kyphosis))) + geom_violin()
+```
+
+They do not have normal distributions.
+
+c. Logistic regression with age$^2$ term:
+
+```{r}
+m2 <- glm(kyphosis ~ age + I(age^2), data = data, family = binomial(logit))
+summary(m2)
+anova(m1, m2)
+pchisq(6.2762, 1, lower.tail = FALSE)
+```
+
+The p-value 0.0122384 is small. The squared age term has a significant effect.
+
+```{r}
+ggplot(data = data, aes(x = age, y = kyphosis)) + geom_point() + geom_line(aes(x, y), data = data.frame(x = age.sorted, y = predict(m2, data.frame(age = age.sorted), type='response')), col='red')
+```
+
+The squared age term makes the curve non-monotone.
+
+### 4.15
+
+a. CMH test:
+
+```{r}
+data <-
+array(c(24, 47, 9, 12,
+        10, 45, 3, 8,
+        5, 57, 4, 9,
+        16, 54, 7, 10,
+        7, 59, 4, 12),
+      dim = c(2, 2, 5),
+      dimnames = list(
+          race = c("black", "white"),
+          merit.pay = c("yes", "no"),
+          district = c("NC", "NE", "NW", "SE", "SW")))
+mantelhaen.test(data)
+```
+
+The p-value 0.008244 is small, signifying that at least in one district the $OR$ of getting the merit pay between races. The common $OR_{bw}$ 0.4617269 means blacks in general get less merit pay than whites.
+
+b. Logistic regression:
+
+```{r}
+data.ftable <- ftable(data, row.vars = c('district', 'race'))
+response <- cbind(yes = data.ftable[1:10], no = data.ftable[11:20])
+district <- factor(rep(c("NC", "NE", "NW", "SE", "SW"), each = 2))
+race <- factor(rep(c("black", "white"), 5))
+```
+
+Simply treating race as an explanatory variable leads to:
+
+```{r}
+m1 <- glm(response ~ race, family = binomial(logit))
+summary(m1)
+```
+
+Looking at the residual deviance 2.5876, this is already good. Race has a big effect. $\log OR_{wb} = 0.8052$, $OR_{bw} = 0.4469985$.
+
+c. With CHM test, we can only know if all $OR = 1$ or at least one $OR \neq 1$. Additional steps need to be done to get the direction. In addition, all directions should be the same for CHM to work.
+
+On the other hand, a model-based analysis can be flexible about directions of different levels, by adding the categorical variable district to fit the data better:
+
+```{r}
+m2 <- glm(response ~ district + race, family = binomial(logit))
+summary(m2)
+```
+
+Residual deviance is further reduced from 2.5876 to 2.071. This variable does not have an effect as large as race.
+
+### 4.19
+
+a. Because this model does not have interacting terms, the $OR$ between different levels of a variable are the same. $OR_{fm} = e^{\hat{\beta}_1^G} = e^{0.16} = 1.173511$. Females are more likely to be in foavor of legalizing abortion.
+
+b. (i)
+
+$$
+\log Odds(Male, Catholic, Republican) = \hat{\alpha} + \hat{\beta}_2^R + \hat{\beta}_2^P = -0.11 - 0.66 - 1.67 = -2.44 \\
+\hat{\pi}(Male, Catholic, Republican) = \frac{e^{-2.44}}{1 + e^{-2.44}} = 0.08017291
+$$
+
+(ii)
+
+$$
+\log Odds(Female, Jewish, Democrat) = \hat{\alpha} + \hat{\beta}_1^G + \hat{\beta}_1^P = -0.11 + 0.16 + 0.84 = 0.89 \\
+\hat{\pi}(Female, Jewish, Democrat) = \frac{e^{0.89}}{1 + e^{0.89}} = 0.7088902
+$$
+
+c. $\hat{\beta}_2^G = -0.16$. In turn, $OR_{fm} = e^{-\hat{\beta}_2^G} = e^{0.16} = 1.173511$.
+
+d. Setting the sum to be 0 means $\hat{\alpha}$ is the average likelihood. Considering gender alone, the average likelihood is $(2\alpha + \hat{\beta}_1^G) = (-0.11 * 2 + 0.16)/2 = -0.03$. The parameters under the new constraints should yield the same $\log Odds$ for all levels. Therefore
+
+$$
+\hat{\beta'}_1^G = \hat{\alpha} + \hat{\beta}_1^G - \hat{\alpha'} = -0.11 + 0.16 - (-0.03) = 0.08 \\
+\hat{\beta'}_2^G = \hat{\alpha} - \hat{\alpha'} = -0.11 - (-0.03) = -0.08
+$$
+
+One sees that the $\log OR_{fm} = \hat{\beta}_1^G - \hat{\beta}_2^G = \hat{\beta'}_1^G - \hat{\beta'}_2^G$ is not changed.
+
+### 4.23
+
+The generic prediction equation is
+
+$$logit(\pi) = \alpha + \beta_A A + \beta_S S + \beta_R R + \beta_{RS} R*S$$
+
+a. When $R = 1$,
+
+$$
+logit(\pi) = -7.00 + 0.10 A + 1.20 S + 0.30 + 0.20 S = -6.70 + 0.10 A + 1.40 S \\
+OR = e^{1.40} = 4.0552
+$$
+
+When $R = 0$,
+
+$$
+logit(\pi) = -7.00 + 0.10 A + 1.20 S \\
+OR = e^{1.20} = 3.320117
+$$
+
+When $S = 1$,
+
+$$
+logit(\pi) = -7.00 + 0.10 A + 1.20 + 0.30 R + 0.20 R = -5.80 + 0.10 A + 0.50 R \\
+OR = e^{0.5} = 1.648721
+$$
+
+When $S = 0$,
+
+$$
+logit(\pi) = -7.00 + 0.10 A + 0.30 R \\
+OR = e^{0.30} = 1.349859
+$$
+
+b. Coefficients of $R$ and $S$ stand for the change in $\log Odds$ while the value changes from 0 to 1, ignoring the interaction $R*S$ term. The p-values stand for the effects of these variables. If these values are small, the corresponding variables are influential.
+
+c. New prediction equation:
+
+$$logit(\pi) = \alpha + \beta_A A + \beta_S S + \beta_R R + \beta_{RS} R*S + \beta_{AR} A*R$$
+
+When $R = 1$,
+
+$$logit(\pi) = -6.70 + 0.10 A + 1.40 S + 0.04 A = -6.70 + 0.14 A + 1.40 S$$
+
+When $R = 0$,
+
+$$logit(\pi) = -7.00 + 0.10 A + 1.20 S$$
+
+The fact that the $0.04 A$ term when $R = 1$ can be combined to the $0.10 A$ demonstrates that it represents the difference between the effect of $A$ for blacks and whites.
+
+### 4.25
+
+a. The new model with interactions would be:
+
+$$logit(\pi) = \alpha + \beta_1 c_1 + \beta_2 c_2 + \beta_3 c_3 + \beta_4 x + \beta_{14} c_1 x + \beta_{24} c_2 x + \beta_{34} c_3 x$$
+
+```{r}
+data <- read.table('~/Documents/All Documents/Academics/Categorical Data Analysis/HWs_exams/hsc.dat', header = 1)
+data$color <- factor(data$color)
+m1 <- glm(y ~ color * width, data = data, family = binomial(logit))
+summary(m1)
+```
+
+For color2: $logit(\pi) = -1.75261 + 0.10600 x$.
+
+For color3: $logit(\pi) = -1.75261 - 8.28735 + 0.10600 x + 0.31287 x = -10.03996 + 0.41887 x$.
+
+For color4: $logit(\pi) = -1.75261 - 19.76545 + 0.10600 x + 0.75237 x = -21.51806 + 0.85837 x$.
+
+For color5: $logit(\pi) = -1.75261 - 4.10122 + 0.10600 x + 0.09443 x = -5.85383 + 0.20043 x$.
+
+Plot $\log Odds$:
+
+```{r}
+x <- seq(min(data$width), max(data$width), 0.1)
+color2 <- -1.75261 + 0.10600 * x
+color3 <- -10.03996 + 0.41887 * x
+color4 <- -21.51806 + 0.85837 * x
+color5 <- -5.85383 + 0.20043 * x
+ggplot(data = data.frame(x = x, color2 = color2, color3 = color3, color4 = color4, color5 = color5)) + geom_line(aes(x, color2, col='color2')) + geom_line(aes(x, color3, col='color3')) + geom_line(aes(x, color4, col='color4')) + geom_line(aes(x, color5, col='color5')) + ylab("")
+```
+
+Plot $\pi$:
+
+```{r}
+get_pi <- function(log.odds) {
+  exp(log.odds) / (1 + exp(log.odds))
+}
+
+ggplot(data = data.frame(x = x, color2 = get_pi(color2), color3 = get_pi(color3), color4 = get_pi(color4), color5 = get_pi(color5))) + geom_line(aes(x, color2, col='color2')) + geom_line(aes(x, color3, col='color3')) + geom_line(aes(x, color4, col='color4')) + geom_line(aes(x, color5, col='color5')) + ylab("")
+```
+
+In all levels, width is positively correlated with the probability of a satellite, although following different functional behaviors.
+
+b. Simpler model:
+
+```{r}
+m2 <- glm(y ~ color + width, data = data, family = binomial(logit))
+summary(m2)
+anova(m2, m1)
+pchisq(4.3764, 3, lower.tail = FALSE)
+```
+
+The p-value 0.2235837 is large. The interaction is not necessary.

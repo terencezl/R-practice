@@ -1,0 +1,290 @@
+---
+title: "ZhiLiu_Midterm"
+author: "Zhi Liu"
+date: "September 21, 2016"
+output: html_document
+---
+
+### 1
+
+(1) $L(\pi; k) = \binom{n}{k} \pi^k (1 - \pi)^{n - k}$
+
+(2) $L_0 = \binom{n}{k} \pi_0^k (1 - \pi_0)^{n - k} = (1 - \pi_0)^{25}$
+
+(3) The log likelihood is
+
+$$l = \log L = \log \binom{n}{k} + k \log \pi + (n - k) \log (1 - \pi).$$
+
+The first-order derivative is
+
+$$u(\pi) = \frac{\partial l}{\partial \pi} = \frac{k}{\pi} - \frac{n - k}{1 - \pi} = \frac{k - n \pi}{\pi (1 - \pi)}.$$
+
+Equating it to 0 gives $\hat\pi = \frac{k}{n} = 0$. In turn,
+
+$$L_{max} = \binom{n}{k} {\hat\pi}^k (1 - \hat\pi)^{n - k} = (1 - 0)^{25} = 1.$$
+
+(4) The maximum likelihood ratio is
+
+$$\Lambda = \frac{L_0}{L_{max}} = (1 - \pi_0)^{25} = 0.5^{25} = 2.980232e^{-08} \\
+\lambda = -2 \log \Lambda = 34.65736 \sim^{H_0} \chi_1^2$$
+
+The p-value is
+```{r}
+pchisq(34.65736, 1, lower.tail = F)
+```
+
+Very small. Reject $H_0$.
+
+(5) The maximum likelihood ratio is
+
+$$\Lambda = \frac{L_0}{L_{max}} = (1 - \pi_0)^{25} = (1 - 0.003)^{25} = 0.9276389 \\
+\lambda = -2 \log \Lambda = 0.1502255 \sim^{H_0} \chi_1^2$$
+
+The p-value is
+```{r}
+pchisq(0.1502255, 1, lower.tail = F)
+```
+
+Large. Do not reject $H_0$.
+
+(6) To get the bounds, we are to solve
+
+$$\lambda = -2\log \frac{L}{L_{max}} = -2\log \frac{\binom{n}{0} (1 - \pi)^n}{\binom{n}{0} (1 - \hat\pi)^n} = -2n\log (1 - \pi) = \chi_{1,\alpha}^2. \\
+\pi = 1 - e^{-\chi_{1,\alpha}^2/2n} (0 < \pi_0 < 1)$$
+
+The lower bound is 0. Therefore the $(1 - \alpha)$ 100% likelihood ratio confidence interval for \pi is $(0, 1 - e^{-\chi_{1,\alpha}^2/2n})$.
+
+(7) The information matrix at MLE $\hat\pi$ is $I(\pi) = \frac{n}{\pi (1 - \pi)}$. The score statistic is
+
+$$Z_s = \frac{u(\pi)}{\sqrt{I(\pi)}} = \frac{\hat\pi - \pi}{\sqrt{\pi (1 - \pi)/n}}.$$
+
+The lower bound is 0. The upper bound can be obtained by setting $|Z_s| = z_{\alpha/2}$. When $\hat\pi = 0$, the solution is $\pi = z_{\alpha/2}^2/(n + z_{\alpha/2}^2)$. Therefore the $(1 - \alpha)$ 100% score confidence interval for \pi is $(0, z_{\alpha/2}^2/(n + z_{\alpha/2}^2))$.
+
+### 2
+
+The response variable is Fatal or Nonfatal Injury. In the table, $p_1 = 1601/162527 = 0.009850671$, $p_2 = 510/412368 = 0.001236759$. 
+
+The difference of proportions is $p_1 - p_2 = 0.008613912$. $se = SE(p_1 - p_2) = \sqrt{\frac{p_1(1 - p_1)}{n_{1+}} + \frac{p_2(1 - p_2)}{n_{2+}}} = 0.0002498375$. The 95% CI is $(p_1 - p_2) \pm z_{\alpha/2} se = 0.008613912 \pm 0.0004896725 = (0.008124239, 0.009103584)$.
+
+The relative risk $RR = p_1/p_2 = 7.964907$. $se = SE(\log RR) = \sqrt{\frac{1 - p_1}{n_{11}} + \frac{1 - p_2}{n_{21}}} = 0.05076235$. The 95% CI is $e^{\log RR \pm z_{\alpha/2} se} = e^{2.075045 \pm 0.09949238} = (7.210603, 8.798114)$.
+
+The odds ratio $OR = \frac{p_1}{p_2} \times \frac{1 - p_2}{1 - p_1} = 7.964905$. $se = SE(\log OR) = \sqrt{1/n_{11} + 1/n_{12} + 1/n_{21} + 1/n_{22}} = 0.05093105$. The 95% CI is $e^{\log OR \pm z_{\alpha/2} se} = e^{2.075045 \pm 0.09982302} = (7.20822, 8.801023)$.
+
+All three indicators suggest that without wearing seat belt, chances of getting fatal injury are a lot higher than getting nonfatal injury during an accident.
+
+$RR$ and $OR$ are approximately equal because both $p_1$ and $p_2$ are very small, so the term $\frac{1 - p_2}{1 - p_1} \approx 1$.
+
+### 3
+
+For Department A, $OR_A = \frac{512 * 19}{313 * 89} = 0.349212$.
+
+For Department B, $OR_B = \frac{353 * 8}{207 * 17} = 0.8025007$.
+
+For Department C, $OR_C = \frac{120 * 391}{205 * 202} = 1.13306$.
+
+For Department D, $OR_D = \frac{138 * 244}{279 * 131} = 0.9212838$.
+
+For Department E, $OR_E = \frac{53 * 299}{138 * 94} = 1.221631$.
+
+For Department F, $OR_F = \frac{22 * 317}{351 * 24} = 0.8278727$.
+
+For total, $OR_T = \frac{1198 * 1278}{1493 * 557} = 1.84108$.
+
+The department-conditional $OR$s vary and mostly (4 out of 6) are $< 1$, showing females have greater odds being admitted, but the marginal $OR$ is a lot $> 1$, showing the opposite, that males have greater odds. This is a typical Simpson's paradox, because department and gender are highly correlated:
+
+```{r}
+DG <- data.frame(A = c(512 + 313, 89 + 19), B = c(353 + 207, 17 + 8), C = c(120 + 205, 202 + 391), D = c(138 + 279, 131 + 244), E = c(53 + 138, 94 + 299), F = c(22 + 351, 24 + 317))
+chisq.test(DG)
+```
+
+And department and admission are highly correlated:
+
+```{r}
+DA <- data.frame(A = c(512 + 89, 313 + 19), B = c(353 + 17, 207 + 8), C = c(120 + 202, 205 + 391), D = c(138 + 131, 279 + 244), E = c(53 + 94, 138 + 299), F = c(22 + 24, 351 + 317))
+chisq.test(DA)
+```
+
+It shows that we should look into the conditional $OR$s of the partial tables rather than just the marginal table to determine the direction of dependence.
+
+### 4
+
+(1) The column totals are $(11 + 52 + 23 + 22, 9 + 44 + 13 + 10, 9 + 41 + 12 + 27) = (108, 76, 89)$. The marginal probabilities are $(0.3956044, 0.2783883, 0.3260073)$. The row totals are $(11 + 9 + 9, 52 + 44 + 41, 23 + 13 + 12, 22 + 10 + 27) = (29, 137, 48, 59)$. The marginal probabilities are $(0.1062271, 0.5018315, 0.1758242, 0.2161172)$. Summarize as below, where in the parentheses are the values assuming independence.
+
+$$
+\begin{array}{c|ccc|c}
+\text{Aspirations} & \text{FI low} & \text{FI middle} & \text{FI high} & \text{marginal prob}\\
+\hline
+\text{Some high school} & 11 (11.47253) & 9 (8.07326) & 9 (9.454211) & 0.1062271\\
+\text{High school graduate} & 52 (54.1978) & 44 (38.1392) & 41 (44.663) & 0.5018315\\
+\text{Some college} & 23 (18.98901) & 13 (13.36264) & 12 (15.64835) & 0.1758242\\
+\text{College graduate} & 22 (23.34066) & 10 (16.42491) & 27 (19.23443) & 0.2161172\\
+\hline
+\text{marginal prob} & 0.3956044 & 0.2783883 & 0.3260073 & N = 273 \\
+\end{array}
+$$
+
+$X^2$:
+```{r}
+FI_A <- data.frame(FI.low = c(11, 52, 23, 22), FL.middle = c(9, 44, 13, 10), FL.high = c(9, 41, 12, 27))
+(results <- chisq.test(FI_A))
+```
+
+$G^2 = 2 \sum_i \sum_j n_{ij} \log \frac{n_{ij}}{\hat\mu_{ij}} = 8.916526$.
+
+```{r}
+pchisq(8.916526, (4 - 1) * (3 - 1), lower.tail = F)
+```
+
+$\mu_{22} = N p_{2+} p_{+2} = 273 * 0.5018315 * 0.2783883 = 38.1392$.
+
+(2) Two ways:
+
+```{r}
+results$stdres # automatic
+
+# manual
+rowsum <- rowSums(FI_A)
+colsum <- colSums(FI_A)
+p.marginal.row <- rowsum / sum(rowsum)
+p.marginal.col <- colsum / sum(colsum)
+results$residuals/sqrt(1-p.marginal.row)/sqrt(1-p.marginal.col)
+```
+
+### 5
+
+(1) See below:
+
+```{r}
+data <- read.table('~/Documents/All Documents/Academics/Categorical Data Analysis/HWs_exams/hsc.dat', header = T)
+data$weight <- data$weight/1000
+data$color <- factor(data$color)
+data$color = relevel(data$color, ref="5")
+m1 <- glm(y ~ color + width, data = data, family = binomial(logit))
+summary(m1)
+```
+
+(2) The 95% confidence interval is
+
+```{r}
+confint(m1)
+```
+
+(3) The average width is
+
+```{r}
+mean(data$width)
+```
+
+And the probability for each color at the average width is
+
+```{r}
+predict(m1, newdata = data.frame(color = factor(2), width = mean(data$width)), type = 'response')[['1']]
+predict(m1, newdata = data.frame(color = factor(3), width = mean(data$width)), type = 'response')[['1']]
+predict(m1, newdata = data.frame(color = factor(4), width = mean(data$width)), type = 'response')[['1']]
+predict(m1, newdata = data.frame(color = factor(5), width = mean(data$width)), type = 'response')[['1']]
+```
+
+(4) Do another glm with only color:
+
+```{r}
+m2 <- glm(y ~ color, data = data, family = binomial(logit))
+summary(m2)
+pchisq(m2$null.deviance - m2$deviance, m2$df.null - m2$df.residual, lower.tail = F)
+```
+
+Alternatively, we can also do model comparison like in (6).
+
+```{r}
+m3 <- glm(y ~ width, data = data, family = binomial(logit))
+summary(m3)
+(anova.results <- anova(m3, m1))
+pchisq(anova.results$Deviance[2], anova.results$Df[2], lower.tail = F)
+```
+
+The p-value is small. Color does have a large effect.
+
+(5) The difference between the slope parameters for medium-light and medium crabs is $\log OR = \beta_{color2} - \beta_{color3}$. The standard error can be estimated as $se = \sqrt{Var(\beta_{color2}) + Var(\beta_{color3}) - 2 Cov(\beta_{color2}, \beta_{color3})}$.
+
+```{r}
+(log.OR <- coef(m1)[['color2']] - coef(m1)[['color3']])
+(se <- sqrt(vcov(m1)['color2', 'color2'] + vcov(m1)['color3', 'color3'] - 2 * vcov(m1)['color2', 'color3']))
+pnorm(log.OR/se, lower.tail = F)
+```
+
+The large p-value suggests the difference is not too significant.
+
+The 95% CI is $-0.07241694 \pm 0.7398922 * 1.959964 = -0.07241694 \pm 1.450162 = (-1.522579, 1.377745)$.
+
+(6) Do another glm with color, width and weight:
+
+```{r}
+m4 <- glm(y ~ color + width + weight, data = data, family = binomial(logit))
+summary(m4)
+(anova.results <- anova(m1, m4))
+pchisq(anova.results$Deviance[2], anova.results$Df[2], lower.tail = F)
+```
+
+A large p-value. So weight is not so much of a big effect.
+
+(7) See below:
+
+```{r}
+data$color = as.numeric(data$color)
+m5 <- glm(y ~ color + width, data = data, family = binomial(logit))
+summary(m5)
+confint(m5)
+```
+
+And the probability for each color at the average width is
+
+```{r}
+mean(data$width) # average width
+predict(m5, newdata = data.frame(color = 2, width = mean(data$width)), type = 'response')[['1']]
+predict(m5, newdata = data.frame(color = 3, width = mean(data$width)), type = 'response')[['1']]
+predict(m5, newdata = data.frame(color = 4, width = mean(data$width)), type = 'response')[['1']]
+predict(m5, newdata = data.frame(color = 5, width = mean(data$width)), type = 'response')[['1']]
+```
+
+### Bonus
+
+(1) The likelihood function is
+
+$$L(\theta; n_1, n_2, n_3) = \frac{n!}{n_1! n_2! n_3!} (\theta^2)^{n_1} [2 \theta (1 - \theta)]^{n_2} [(1 - \theta)^2]^{n_3}$$
+
+The log likelihood function is then
+
+$$l(\theta; n_1, n_2, n_3) = \log \frac{n!}{n_1! n_2! n_3!} + 2 n_1 \log \theta + n_2 \log [2 \theta (1 - \theta)] + 2 n_3 \log (1 - \theta)$$
+
+Take first-order derivative
+
+$$\begin{align}
+\frac{\partial l}{\partial \theta} & = \frac{2 n_1}{\theta} + \frac{n_2 (1 - 2 \theta)}{\theta (1 - \theta)} - \frac{2 n_3}{1 - \theta} \\
+ & = \frac{2 n_1 (1 - \theta) + n_2 (1 - 2 \theta) - 2n_3 \theta}{\theta (1 - \theta)} \\
+ & = \frac{2 n_1 + n_2 - 2 n \theta}{\theta (1 - \theta)}
+\end{align}$$
+
+Setting it to 0 gives
+
+$$\hat\theta_{MLE} = \frac{2 n_1 + n_2}{2 n}$$
+
+(2) The negative second order derivative is
+
+$$\begin{align}
+-\frac{\partial^2 l}{\partial \theta^2} & = \frac{2 n \theta (1 - \theta) + (2 n_1 + n_2 - 2 n \theta)(1 - 2\theta)}{\theta^2 (1 - \theta)^2} \\
+ & = \frac{2 n \theta^2 - (2 n_1 + n_2) (2\theta - 1)}{\theta^2 (1 - \theta)^2} \\
+ & = \frac{2 n \theta^2 - (2 n_1 + n_2) (2\theta - 1 - \theta^2) - \theta^2 (2 n_1 + n_2)}{\theta^2 (1 - \theta)^2} \\
+ & = \frac{(2 n_1 + n_2) (1 + \theta^2 - 2\theta) + (n_2 + 2 n_3) \theta^2}{\theta^2 (1 - \theta)^2} \\
+ & = \frac{2 n_1 + n_2}{\theta^2} + \frac{n_2 + 2 n_3}{(1 - \theta)^2}
+\end{align}$$
+
+The expectation of $-\frac{\partial^2 l}{\partial \theta^2}$ is
+
+$$\begin{align}
+E(-\frac{\partial^2 l}{\partial \theta^2}) & = \sum_{n_1, n_2, n_3} -\frac{\partial^2 l}{\partial \theta^2} \frac{n!}{n_1! n_2! n_3!} (\theta^2)^{n_1} [2 \theta (1 - \theta)]^{n_2} [(1 - \theta)^2]^{n_3} \\
+ & = \sum_{n_1, n_2, n_3} \left(\frac{2 n_1 + n_2}{\theta^2} + \frac{n_2 + 2 n_3}{(1 - \theta)^2}\right) \frac{n!}{n_1! n_2! n_3!} 2^{n_2} \theta^{2 n_1 + n_2} (1 - \theta)^{n_2 + 2 n_3}
+\end{align}
+$$ 
+
+under the constraint of $n_1 + n_2 + n_3 = n$. I'm not sure how to solve this, but it appears that by replacing one $\theta$ from the first term above, and one $(1 - \theta)$ from the second term, the expression is reduced to $I(\theta) = \frac{2n}{\theta (1 - \theta)}$.
+
+The asymptotic standard error of $\hat\theta_{MLE}$ is $\sqrt{\frac{\hat\theta_{MLE} (1 - \hat\theta_{MLE})}{2n}}$.

@@ -1,0 +1,200 @@
+---
+title: "HW1"
+author: "Terence Zhi Liu"
+date: "2/2/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F)
+library(caret)
+library(tree)
+library(randomForest)
+library(gbm)
+library(glmnet)
+```
+
+# 1. 
+
+(a) We split the data.
+
+```{r}
+set.seed(1)
+carseats = read.csv('Carseats.txt')[-1] # get rid of index column
+trainIndex <- createDataPartition(carseats$Sales, p = 0.6, list = F)
+carseatsTrain = carseats[trainIndex, ]
+carseatsTest = carseats[-trainIndex, ]
+```
+
+(b) We fit a regression tree to the training set.
+
+```{r fig.width = 12, fig.height = 8}
+reg.tree = tree(Sales ~ ., carseatsTrain)
+plot(reg.tree)
+text(reg.tree, pretty = 0)
+```
+
+```{r}
+summary(reg.tree)
+```
+
+It shows the MSE of the model, 2.26. Now we predict the test set.
+
+```{r}
+sales_predicted = predict(reg.tree, newdata = carseatsTest[-1])
+MSE = mean((carseatsTest$Sales - sales_predicted)^2)
+```
+
+The test set MSE is `r MSE`.
+
+(c) We do CV trees.
+
+```{r}
+set.seed(1)
+reg.tree.cv = cv.tree(reg.tree)
+plot(reg.tree.cv$size, reg.tree.cv$dev, type = 'b')
+```
+
+Looks like 11 terminal nodes yield the lowest deviance/MSE. Prune it.
+
+```{r}
+reg.tree.prune = prune.tree(reg.tree, best = 11)
+sales_predicted = predict(reg.tree.prune, newdata = carseatsTest[-1])
+MSE = mean((carseatsTest$Sales - sales_predicted)^2)
+```
+
+The test set MSE is `r MSE`, which is slightly bigger than the full tree. But this might vary depending on random sampling.
+
+(d) We do bagging.
+
+```{r}
+set.seed(1)
+reg.bag = randomForest(Sales ~ ., carseatsTrain, mtry = 10, # all variables
+                       importance = T)
+sales_predicted = predict(reg.bag, newdata = carseatsTest[-1])
+MSE = mean((carseatsTest$Sales - sales_predicted)^2)
+```
+
+The test set MSE is `r MSE`, much smaller than a single tree.
+
+```{r}
+importance(reg.bag)
+```
+
+ShelveLoc is the most important variable.
+
+(e) We do random forest.
+
+```{r}
+set.seed(1)
+reg.rf = randomForest(Sales ~ ., carseatsTrain, mtry = 4, importance = T)
+sales_predicted = predict(reg.rf, newdata = carseatsTest[-1])
+MSE = mean((carseatsTest$Sales - sales_predicted)^2)
+```
+
+THe test set MSE is `r MSE`.
+
+```{r}
+importance(reg.rf)
+```
+
+Still the ShelveLoc is the most important variable.
+
+Now let's try an array of `mtry`s.
+
+```{r}
+set.seed(1)
+mtry_array = seq(1, 10)
+MSE_array = numeric(length(mtry_array))
+for (i in seq_along(mtry_array)) {
+  reg.rf = randomForest(Sales ~ ., carseatsTrain, mtry = mtry_array[i])
+  sales_predicted = predict(reg.rf, newdata = carseatsTest[-1])
+  MSE_array[i] = mean((carseatsTest$Sales - sales_predicted)^2) 
+}
+
+plot(mtry_array, MSE_array, 'b')
+```
+
+mtry = 6 seems to yield the least MSE.
+
+# 2.
+
+(a) We clean and transform the data.
+
+```{r}
+hitters = read.csv('Hitters.txt')[-1] # get rid of name column
+hitters = hitters[!is.na(hitters['Salary']), ]
+hitters$Salary = log(hitters$Salary)
+```
+
+(b) We split the data.
+
+```{r}
+hittersTrain = hitters[1:200, ]
+hittersTest = hitters[200:dim(hitters)[1], ]
+```
+
+(c) Training set MSE:
+
+```{r}
+set.seed(1)
+lambda_array = 10^(seq(-5, 0, 0.5))
+MSE_train_array = numeric(length(lambda_array))
+MSE_test_array = numeric(length(lambda_array))
+for (i in seq_along(lambda_array)) {
+  boost = gbm(Salary ~ .,data = hittersTrain, distribution = "gaussian", 
+              n.trees = 1000, interaction.depth = 4, shrinkage = lambda_array[i])
+  salary_predicted = predict(boost, 
+              newdata = hittersTest[!(names(hittersTest) == "Salary")], n.trees = 1000)
+  MSE_train_array[i] = mean((hittersTrain$Salary - boost$fit)^2)
+  MSE_test_array[i] = mean((hittersTest$Salary - salary_predicted)^2)
+}
+
+plot(lambda_array, MSE_train_array, 'b', log='x')
+```
+
+(d) Test set MSE:
+
+```{r}
+plot(lambda_array, MSE_test_array, 'b', log='x')
+```
+
+The shrinkage value that yields the minimum MSE `r min(MSE_array)` is $\lambda$ = `r lambda_array[which.min(MSE_array)]`.
+
+(e) Take the Lasso with CV.
+
+```{r}
+set.seed(1)
+lasso.cv = cv.glmnet(model.matrix(Salary ~ ., hittersTrain)[, -1], 
+                     hittersTrain$Salary, alpha = 1)
+salary_predicted = predict(lasso.cv, 
+                           newx = model.matrix(Salary ~ ., hittersTest)[, -1], 
+                           s = lasso.cv$lambda.min)
+MSE = mean((hittersTest$Salary - salary_predicted)^2)
+plot(lasso.cv)
+```
+
+The test set MSE is `r MSE`, bigger than that of boosting.
+
+(f) Apply the boosting model with the optimal $\lambda$ = 0.0031623.
+
+```{r}
+set.seed(1)
+boost = gbm(Salary ~ .,data = hittersTrain, distribution = "gaussian", 
+              n.trees = 1000, interaction.depth = 4, shrinkage = 0.0031623)
+summary(boost)
+```
+
+`CAtBat` is the most important predictor.
+
+(g) Do bagging.
+
+```{r}
+set.seed(1)
+reg.bag = randomForest(Salary ~ ., hittersTrain, mtry = 19) # all variables
+salary_predicted = predict(reg.bag, 
+                      newdata = hittersTest[!(names(hittersTest) == "Salary")])
+MSE = mean((hittersTest$Salary - salary_predicted)^2)
+```
+
+The test set MSE is `r MSE`.

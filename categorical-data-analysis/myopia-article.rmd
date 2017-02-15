@@ -1,0 +1,292 @@
+---
+title: "Myopia Study with Logistic Regression"
+author: "Terence Zhi Liu | Chaoyang Wang"
+date: "Oct. 7, 2016"
+output: html_document
+#output: pdf_document
+#classoption: landscape, a5paper
+#toc:
+#  toc_depth: 2
+---
+
+```{r include = 'FALSE'}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, fig.align = "center")
+library(plyr)
+library(pROC)
+library(ggplot2)
+```
+
+# 1. Introduction [^1]
+
+Myopia (near-sightedness or short-sightedness) is the most common eye problem and is estimated to affect 1.5 billion people (22% of the population). It is a condition of the eye where light focuses in front, instead of on the retina. This causes distant objects to be blurry while close objects appear normal. Other symptoms may include headaches and eye strain. Severe near-sightedness increases the risk of retinal detachment, cataracts, and glaucoma.
+
+<center>![Eyeball anatomy](https://upload.wikimedia.org/wikipedia/commons/a/ae/Myopia.gif)</center>
+
+The underlying cause is believed to be a combination of genetic and environmental variables. A family history of the condition is likely to play a role. Environmental risk factors include doing work that involves focusing on close objects and greater time spent indoors. There is tentative evidence that near-sightedness can be prevented by having young children spend more time outside. This may be related to natural light exposure.
+
+Regarding environmental variables, there are two hypotheses:
+
+- "Near work" hypothesis
+
+    Also referred to as the "use-abuse theory", it states that spending time involved in near work strains the eyes and increases the risk of myopia. Some studies support the hypothesis while other studies do not.
+  
+- "Visual stimuli" hypothesis
+
+    The visual stimuli hypothesis adds another layer of complexity. There is evidence that lack of normal visual stimuli causes improper development of the eyeball, namely, elongation. In this case, "normal" refers to the environmental stimuli that the eyeball evolved for over hundreds of millions of years, like oceans, jungles, forests. Modern humans who spend most of their time indoors, in dimly or fluorescently lit buildings are not giving their eyes the appropriate stimuli.
+
+    Experiments where animals such as kittens and monkeys had their eyes sewn shut for long periods of time also show eyeball elongation, demonstrating that complete lack of stimuli also causes improper growth trajectories of the eyeball. Further research shows that people, and children especially, who spend more time doing physical exercise and outdoor activities have lower rates of myopia. There is preliminary evidence that the protective effect of outdoor activities on the development of myopia is due, at least in part, to the effect of daylight on the production and the release of retinal dopamine, which deters eyeball elongation.
+
+Here we study myopia's various likely influencing variables using logistic regression. We examine physiological variables (age, gender, eyeball parameters), environmental variables (time spent on near-work and outdoor activities) as well as hereditary variables (myopic mother and father). By doing the analysis, we examine the validity of the aforementioned hypotheses.
+
+[^1]: <https://en.wikipedia.org/wiki/Near-sightedness>
+
+# 2. Dataset
+
+The dataset is from Hosmer, D.W., Lemeshow, S. and Sturdivant, R.X. (2013) *Applied Logistic Regression: Third Edition*, and is copyrighted by John Wiley | Sons Inc.
+
+```{r}
+myopia = read.csv('myopia.csv', row.names = 'ID')
+myopia$MYOPIC = factor(myopia$MYOPIC)
+myopia$GENDER = factor(myopia$GENDER)
+myopia$MOMMY = factor(myopia$MOMMY)
+myopia$DADMY = factor(myopia$DADMY)
+head(myopia)
+```
+
+The columns are:
+
+Column|       Description                 |   Value/Unit    | Name
+------|-----------------------------------|-----------------|------------
+1 | Year subject entered the study | year | STUDYYEAR
+2 | Myopia within the first five years of follow up | 0 = No; 1 = Yes | MYOPIC
+3 | Age at first visit | years | AGE
+4 | Gender | 0 = Male; 1 = Female | GENDER
+5 | Spherical Equivalent Refraction | diopter | SPHEQ
+6 | Axial Length | mm | AL
+7 | Anterior Chamber Depth | mm | ACD
+8 | Lens Thickness | mm | LT
+9 | Vitreous Chamber Depth | mm | VCD
+10 | Time spent engaging in sports/outdoor activities | hours per week | SPORTHR
+11 | Time spent reading for pleasure | hours per week | READHR
+12 | Time spent playing video/computer games or working on the computer | hours per week | COMPHR
+13 | Time spent reading or studying for school assignments | hours per week | STUDYHR
+14 | Time spent watching television | hours per week | TVHR
+15 | Composite of near-work activities | hours per week | DIOPTERHR
+16 | Was the subject's mother myopic? | 0 = No; 1 = Yes | MOMMY
+17 | Was the subject's father myopic? | 0 = No; 1 = Yes | DADMY
+
+Column 2: `MYOPIC` is defined as `SPHEQ` <= -0.75 D.\
+Column 5: A measure of the eye's effective focusing power. Eyes that are “normal” (don’t require glasses or contact lenses) have spherical equivalents between -0.25 diopters (D) and +1.00 D. The more negative the spherical equivalent, the more myopic the subject.\
+Column 6: The length of eye from front to back.\
+Column 7: The length from front to back of the aqueous-containing space of the eye between the cornea and the iris.\
+Column 8: The length from front to back of the crystalline lens.\
+Column 9: The length from front to back of the aqueous-containing space of the eye in front of the retina.\
+Column 15: the composite is defined as `DIOPTERHR` = 3 × (`READHR` + `STUDYHR`) + 2 × `COMPHR` + `TVHR`.
+
+Besides the response `MYOPIC`, there are three categorical variables `GENDER`, `MOMMY` and `DADMY`. Let's visualize them:
+
+```{r}
+par(mfrow=c(1,3))
+plot(myopia$MYOPIC, myopia$GENDER, xlab = "MYOPIC", ylab = "GENDER")
+plot(myopia$MYOPIC, myopia$MOMMY, xlab = "MYOPIC", ylab = "MOMMY")
+plot(myopia$MYOPIC, myopia$DADMY, xlab = "MYOPIC", ylab = "DADMY")
+```
+
+# 3. Analysis
+
+## 1. Initial exploratory fit
+
+Continuing last section, we look at a fit with all categorical variables `GENDER`, `MOMMY` and `DADMY`.
+
+```{r}
+summary(glm(MYOPIC ~ GENDER + MOMMY + DADMY, data = myopia, 
+            family = binomial(logit)))$coefficients
+```
+
+It appears that `GENDER` is not statistically prominent. Look at the contingency table with `MOMMY` and `DADMY`:
+
+```{r}
+myopia.table <- xtabs(~ MOMMY + DADMY + MYOPIC, data = myopia)
+ftable(myopia.table)
+summary(myopia.table)
+```
+
+Here we do a fit that includes every column other than `MYOPIC`.
+
+```{r}
+summary(glm(MYOPIC ~ ., data = myopia, family = binomial(logit)))$coefficients
+```
+
+There are a few observations:
+
+- We immediately find out that the p-value of `SPHEQ` is very small. Looking at the column notes above, `MYOPIC` is defined according to `SPHEQ`. Therefore, obviously, the correlation is prominent. 
+
+- `DIOPTERHR`'s row disappears, because it is a linearly combination of `READHR`, `STUDYHR`, `COMPHR` and `TVHR`.
+
+- `STUDYYEAR` is related to the chronological trend and sampling process, and should not be a causal variable. The p-value of `STUDYYEAR` is indeed large, confirming our belief.
+
+- `AL`, `ACD`, `LT` and `VCD` have similar p-values. A closer examination shows that similar to `DIOPTERHR`, there is a linear functional relationship. `AL` = `ACD` + `LT` + `VCD`. The maximum absolute difference between two sides of the equation is `r max(abs(myopia$VCD + myopia$LT + myopia$ACD - myopia$AL))`.
+
+## 2. `MYOPIC` ~ (`AL`, `ACD`, `LT`, `VCD`) model selection
+
+One term of the four must be gone. We use `step` to evaluate the 2-term interaction models with one variable gone.
+
+```{r results = 'hide'}
+m.eyeball.no.AL <- step(glm(MYOPIC ~ .^2 , data = 
+            myopia[, c('MYOPIC', 'ACD', 'LT', 'VCD')], family = binomial(logit)))
+m.eyeball.no.ACD <- step(glm(MYOPIC ~ .^2 , data = 
+            myopia[, c('MYOPIC', 'AL', 'LT', 'VCD')], family = binomial(logit)))
+m.eyeball.no.LT <- step(glm(MYOPIC ~ .^2 , data = 
+            myopia[, c('MYOPIC', 'AL', 'ACD', 'VCD')], family = binomial(logit)))
+m.eyeball.no.VCD <- step(glm(MYOPIC ~ .^2 , data = 
+            myopia[, c('MYOPIC', 'AL', 'ACD', 'LT')], family = binomial(logit)))
+```
+
+```{r}
+summary(m.eyeball.no.AL)$coefficients
+summary(m.eyeball.no.ACD)$coefficients
+summary(m.eyeball.no.LT)$coefficients
+summary(m.eyeball.no.VCD)$coefficients
+```
+
+Interestingly, removing `ACD` results in all other three variables statistically prominent (`m.eyeball.no.ACD`), but keeping `ACD`, eventually only `ACD` alone is prominent. So instead of removing just one term, we remove `AL`, `LT` and `VCD`, while keeping `ACD`.
+
+In the next iteration, we rule out these terms.
+
+```{r}
+summary(m <- glm(MYOPIC ~ . - STUDYYEAR - SPHEQ - AL - LT - VCD - DIOPTERHR, 
+                  data = myopia, family = binomial(logit)))$coefficients
+```
+
+It's curious to see that `STUDYHR` has an opposite effect as `READHR`.
+
+## 3. Categorization & automated fit
+
+Now we need to categorize the column variables. Our goal is to find out the causal variables for myopia.
+
+- `AGE` and `GENDER` are physiological variables. Our life experience suggests they should not directly play a role in causing myopia, but may compound with other variables. `AL`, `ACD`, `LT` and `VCD` are physiological variables as well. They represent the state of the eyeballs.
+
+- `SPORTHR`, `READHR`, `COMPHR`, `STUDYHR` and `TVHR` are environmental variables, documenting the time spent on near-work and outdoor activities. They depend on the life style of the subject. We should give more attention to these.
+
+- `MOMMY` and `DADMY` are hereditary variables. They should play a heavy role.
+
+Then we use `step` to automatically select the best fitted model:
+
+```{r results = 'hide'}
+m.s <- step(m)
+```
+
+```{r}
+summary(m.s)$coefficients
+```
+
+Looks like some automatic magic has already removed some of the less prominent variables. `AGE` is not playing a prominent role, while physiological variables `GENDER` and `ACD` remain. Among the environmental variables, only `SPORTHR` and `READHR` remain. Hereditary variables `MOMMY` and `DADMY` remain as well.
+
+It is also beneficial to test the 2-term interaction models with `step` using the not-yet-automatically-reduced model `m`.
+
+```{r results = 'hide'}
+m.2.s <- step(glm(MYOPIC ~ .^2, data = myopia[, c('MYOPIC', 'AGE', 'GENDER', 'ACD', 
+              'SPORTHR', 'READHR', 'COMPHR', 'STUDYHR', 'TVHR', 'MOMMY', 'DADMY')], 
+              family = binomial(logit)))
+```
+
+```{r}
+summary(m.2.s)$coefficients
+```
+
+Using the automatically-reduced model `m.s`, we have:
+
+```{r results = 'hide'}
+m.s.2.s <- step(glm(MYOPIC ~ .^2, data = myopia[, c('MYOPIC', 'GENDER', 'ACD', 
+    'SPORTHR', 'READHR', 'MOMMY', 'DADMY')], family = binomial(logit)))
+```
+
+```{r}
+summary(m.s.2.s)$coefficients
+```
+
+There isn't much of a difference except by including `STUDYHR`, we also introduce 2-term interaction `SPORTHR:STUDYHR`. The observation about the coefficient of `STUDYHR` in Section 2 is also seen here, only more negative. Considering the fact that the subjects are between 5 to 9 years old, their homework assignment that counts as `STUDYHR` could very much be non-near-work activities. They do not necessarily equate activities counting as `READHR`. For this reason, we remove the confounding variable `STUDYHR` and stick with the simpler model.
+
+In addition, the p-value for `GENDER` is very large, we remove it while keeping the 2-term interactions `GENDER`:`SPORTHR`. The p-value for `ACD`:`DADMY` is large too so we remove it as well. Refit the data:
+
+```{r}
+m.s.2.s.no.gender <- glm(formula = MYOPIC ~ ACD + SPORTHR + READHR + MOMMY + DADMY + 
+     GENDER:SPORTHR, data = myopia[, c("MYOPIC", "GENDER", "ACD", "SPORTHR", "READHR", 
+                                       "MOMMY", "DADMY")], family = binomial(logit))
+summary(m.s.2.s.no.gender)
+```
+
+Some goodness-of-fit tests:
+
+```{r}
+# Model validity
+with(pchisq(deviance, df.residual), data = m.s.2.s.no.gender)
+# H_0 independent hypothesis
+with(pchisq(null.deviance - deviance, df.null - df.residual, 
+            lower.tail = F), data = m.s.2.s.no.gender)
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(predict(m.s.2.s.no.gender), resid(m.s.2.s.no.gender), ylab = 'Deviance residual')
+plot(predict(m.s.2.s.no.gender, type = 'response'), resid(m.s.2.s.no.gender), ylab = 'Deviance residual')
+```
+
+The gap in the residual plot look interesting. We tried to use different links, square and square root transformations but the situation did not improve.
+
+ROC curve:
+
+```{r results = 'hide'}
+result <- roc(myopia$MYOPIC,predict(m.s.2.s.no.gender,type = "response"))
+plot(result, print.auc = TRUE)
+```
+
+## 4. Model interpretation
+
+With the current model, the influencing variables are `ACD`, `SPORTHR`, `READHR`, `MOMMY`, `DADMY` and `SPORTHR`:`GENDER`. All the p-values are $<$ 0.05. Here we examine every variable.
+
+- `ACD` contributes to myopia. From the introduction we know that the elongation of the eyeball (total length AL) is the physiological cause of myopia, but more fitting suggets `ACD` is the most prominent variable. One reason could be that `ACD` measures the first layer of the front of the eye, whose shape is critical in refracting light. This is also why LASIK surgury, done on this layer, is effective.
+
+- `SPORTHR` lowers the chance while `READHR` increases it. This proves what we already know, both by the "near work" hypothesis (`READHR`), and the "visual stimuli" hypothesis (`SPORTHR`). The 2-term correlation variabel `SPORTHR`:`GENDER` suggests for females (`GENDER` = 1), the coefficient for `SPROTHR` is -0.08 + 0.05 = -0.03, less negative than for males (`GENDER` = 0), -0.08. In other words, it benefits men/boys more to have more outdoors time in term of not developing myopia. This appears to be consistent with evolution, because for 200 thousand years men have been hunters, and have been under a stronger selection with outdoors activities. If this is true, the "visual stimuli" hypothesis must have more descriptive/predictive power for males than the "near work" hypothesis, while less for females.
+
+- `MOMMY` and `DADMY` are also strong positive influencing variables. Intuitively, with myopic parents, children are more likely to get myopia. They differ by a small value but the difference is not statistically prominent.
+
+```{r}
+se = sqrt(vcov(m.s.2.s.no.gender)['MOMMY1', 'MOMMY1'] + 
+          vcov(m.s.2.s.no.gender)['DADMY1', 'DADMY1'] - 
+      2 * vcov(m.s.2.s.no.gender)['DADMY1', 'MOMMY1'])
+pnorm(m.s.2.s.no.gender$coefficients[['MOMMY1']] - 
+      m.s.2.s.no.gender$coefficients[['DADMY1']], se)
+```
+
+Assuming `ACD` and `READHR` taking their average values, we plot a few scenarios.
+
+```{r}
+SPORTHR.seq = seq(min(myopia$SPORTHR), max(myopia$SPORTHR))
+newdata = data.frame(SPORTHR = SPORTHR.seq,
+  male.parents_good = predict(m.s.2.s.no.gender, newdata = with(myopia, 
+    data.frame(GENDER = factor(0), ACD = mean(ACD), SPORTHR = SPORTHR.seq,
+    READHR = mean(READHR), MOMMY = factor(0), DADMY = factor(0))), type = 'response'),
+  female.parents_good = predict(m.s.2.s.no.gender, newdata = with(myopia, 
+    data.frame(GENDER = factor(1), ACD = mean(ACD), SPORTHR = SPORTHR.seq,
+    READHR = mean(READHR), MOMMY = factor(0), DADMY = factor(0))), type = 'response'),
+  male.parents_myopic = predict(m.s.2.s.no.gender, newdata = with(myopia, 
+    data.frame(GENDER = factor(0), ACD = mean(ACD), SPORTHR = SPORTHR.seq,
+    READHR = mean(READHR), MOMMY = factor(1), DADMY = factor(1))), type = 'response'),
+  female.parents_myopic = predict(m.s.2.s.no.gender, newdata = with(myopia, 
+    data.frame(GENDER = factor(1), ACD = mean(ACD), SPORTHR = SPORTHR.seq,
+    READHR = mean(READHR), MOMMY = factor(1), DADMY = factor(1))), type = 'response'))
+
+ggplot(data = newdata, aes(x = SPORTHR)) + 
+  geom_line(aes(y = male.parents_good,col = 'male, parents good')) + 
+  geom_line(aes(y = female.parents_good, col = 'female, parents good')) + 
+  geom_line(aes(y = male.parents_myopic, col = 'male, parents myopic')) + 
+  geom_line(aes(y = female.parents_myopic, col = 'female, parents myopic')) + 
+  ylab("Probability")
+```
+
+This suggests an effective way to raise children, in order to prevent them from developing myopia.
+
+# 5. Conclusion
+
+We studied various likely influencing variables of myopia using logistic regression. Physiological variables, environmental variables and hereditary variables were examined. We examined the validity of the aforementioned hypotheses and concluded that the "visual stimuli" hypothesis have more descriptive/predictive power for males than the "near work" hypothesis, while less for females. This suggests an effective way to raise children, in order to prevent them from developing myopia.

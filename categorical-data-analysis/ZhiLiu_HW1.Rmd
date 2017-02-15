@@ -1,0 +1,96 @@
+---
+title: "ZhiLiu_HW1"
+author: "Zhi Liu"
+date: "August 28, 2016"
+output: html_document
+---
+
+### 1.2
+
+a. nominal; b. ordinal; c. ordinal; d. nominal; e. nominal; f. ordinal.
+
+### 1.4
+
+a. When $\pi = 0.50$,
+
+```{r}
+dbinom(0, 2, 0.5) # Y = 0
+dbinom(1, 2, 0.5) # Y = 1
+dbinom(2, 2, 0.5) # Y = 2
+```
+
+The mean of the binomial distribution is $n\pi = 2 * 0.5 = 1$. The standard deviation is $\sqrt{n\pi(1-\pi)} = \sqrt{2 * 0.5 * 0.5} = 0.7071068$.
+
+b.
+(i) When $\pi = 0.60$,
+
+```{r}
+dbinom(0, 2, 0.6) # Y = 0
+dbinom(1, 2, 0.6) # Y = 1
+dbinom(2, 2, 0.6) # Y = 2
+```
+
+(ii) When $\pi = 0.40$,
+
+```{r}
+dbinom(0, 2, 0.4) # Y = 0
+dbinom(1, 2, 0.4) # Y = 1
+dbinom(2, 2, 0.4) # Y = 2
+```
+
+c.
+
+$$L(\pi; y=1) = \binom{2}{1} \pi^{2-1} (1-\pi)^1 = 2\pi(1-\pi).$$
+
+```{r}
+l <- function(p) {
+  2 * p * (1-p)
+}
+plot(l, c(0.001, 0.999))
+```
+
+### 1.6
+
+a. $n_3 = n - n_1 - n_2$.
+
+b. 
+
+\begin{align}
+(n_1, n_2, n_3) & = (3, 0, 0) = (0, 3, 0) = (0, 0, 3) \\
+                & = (2, 1, 0) = (0, 2, 1) = (1, 0, 2) = (1, 2, 0) = (0, 1, 2) = (2, 0, 1) \\
+                & = (1, 1, 1)
+\end{align}
+
+c. When $(\pi_1, \pi_2, \pi_3) = (0.25, 0.5, 0.25)$, and $(n_1, n_2, n_3) = (1, 2, 0)$,
+
+```{R}
+dmultinom(c(1, 2, 0), prob = c(0.25, 0.5, 0.25))
+```
+
+d. $n_1$ alone has a binomial distribution. $n_1$ could be 0, 1, 2. $n_1 \sim Binom(3, 0.25)$.
+
+### 1.8
+
+a. $\hat{p} = 344/1170 = 0.2940171$.
+
+b. Do a proportion test, with $H_0: \pi = 0.5; H_1: \pi > 0$.
+
+```{r}
+prop.test(344, 1170, 0.5, conf.level = 0.99, alternative = "greater")
+```
+
+Can't reject $H_0$.
+
+Do the same test with $H_0: \pi = 0.5; H_1: \pi < 0$.
+
+```{r}
+prop.test(344, 1170, 0.5, conf.level = 0.99, alternative = "less")
+```
+
+Can reject $H_0$. Hence the minority would say "yes".
+
+c. This time estimate the two-sided interval with proportion test.
+
+```{r}
+prop.test(344, 1170, 0.5, conf.level = 0.99)
+```
